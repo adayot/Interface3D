@@ -1,10 +1,3 @@
-/**
- * @Authors: LE FUR Anthony / LE BERRE Thomas
- * @Company: ISEN Yncréa Ouest
- * @Email: anthony.le-fur@isen-ouest.yncrea.fr / thomas.le-berre@isen-ouest.yncrea.fr
- * @Last Modified: 02-Juil-2020
- */
-
 #include "DICOM_3Dmouse.h"
 #include "Scene3D.h"
 #include "Widget3D.h"
@@ -29,7 +22,7 @@ FLOAT       EcartPixel;
 *             *all : vecteur contenant la valeur de tous les pixels de toutes images à la suite
 *
 * Valeur retournée : *all
-*--------------------------------------------------------------------------*/ 
+*--------------------------------------------------------------------------*/
 QVector<unsigned short>* Interface::ALLPixelsFunc(vector<unsigned short>* pixels, QVector<unsigned short>* allpixels)
 {
     for (auto pixel : *pixels)
@@ -53,7 +46,7 @@ void Interface::Affichage3D()
         return;
 
     //Lancement interface 3D
-    Widget3D* Scene3D = new Widget3D();
+    Widget3D* Scene3D = new Widget3D(this->imageLabel1, this->imageLabel2, this->imageLabel3);
 
 
 }
@@ -62,7 +55,7 @@ void Interface::Affichage3D()
 * Fonction : InfoCoupes()
 *
 * Description : Affichage du nom de la coupe correspondant à l'image
-* 
+*
 * Arguments : aucun
 *
 * Valeur retournée : aucune
@@ -80,7 +73,7 @@ void Interface::InfoCoupes()
     //Gestion de l'ouverture d'un fichier dcm
     QStringList Listchemin = *Listechemin;
     *pathFolderSave = Listchemin[*NbFichiers / 2]; //Fichier central
-    QByteArray b = pathFolderSave->toLocal8Bit(); //Convertir le QString* en const char * 
+    QByteArray b = pathFolderSave->toLocal8Bit(); //Convertir le QString* en const char *
     const char* chemin = b.data();
     dcm::DicomFile* data;
     vector<unsigned short>* *pixels;
@@ -89,11 +82,11 @@ void Interface::InfoCoupes()
     data = readFile(chemin);
     if (data == NULL)
         return;
-    
+
     //Récupération des valeurs d'orientation
     string orientationGLOBAL = getStringTagValue(0x00200037, data); //00200037->attribut d'orientation de l'image
     QString orientation = QString::fromStdString(orientationGLOBAL); //conversion en String
-    
+
     //Supression des moins
     orientation.remove("-");
 
@@ -235,14 +228,14 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
 {
     pathFolder = new QString();
     *pathFolder = QFileDialog::getExistingDirectory(this, "Explorateur de fichiers");//Boite de dialogue sélection dossier
-    
+
     //Condition d'existence du dossier
     if (pathFolder->isEmpty() || pathFolder->isNull())
         return;
 
     //Mémorisation
     pathFolderSave = pathFolder;//Pour eviter de lire un dossier vide dans les infos patients en cas d'annulation de l'ouverture.
-    
+
     //Initialisation des variables globales de l'intensité max de chaque images
     IntensiteMaxInitCoupe1 = new qint16;
     IntensiteMaxInitCoupe2 = new qint16;
@@ -265,10 +258,10 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
 
     //Initialisation de la variables globale MenuSouris3D
     *MenuSouris3D = 0; //Le menu On/Off de la souris3D n'a pas la main
-    
+
     //Initialisation de la variables globale OnOffIntensite
     *OnOffIntensite = 0; //Modifacation intensité non active
-    
+
     //Initialisation de la variables globale MenuIntensite
     *MenuIntensite = 0; //Le menu On/Off de la modification d'intensité n'a pas la main
 
@@ -303,7 +296,7 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
 
     //Récupération du nombre total de fichiers dans le dossier
     *NbFichiers = Listchemin.length();
-    
+
     //Création barre de chargement des images
     QProgressDialog* Chargement = new QProgressDialog("Importation des "+QString::number(*NbFichiers)+" images", "Cancel", 0, *NbFichiers,this);//Paramètres de la barre
     Chargement->setWindowTitle("Chargement");
@@ -322,7 +315,7 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
     {
         *pathFolder = Listchemin[NbFichier]; //Selection du chemin selon la boucle
 
-        //Convertion le QString* en const char * 
+        //Convertion le QString* en const char *
         QByteArray b = pathFolder->toLocal8Bit();
         const char* chemin = b.data();
 
@@ -372,7 +365,7 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
             break;
         }
         if (NbFichier == (*NbFichiers / 4) - 1){
-           
+
             PositionsVector[0] = PositionCoupe;
 
         }
@@ -381,7 +374,7 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
         }
 
         //Espace entre les pixels
-        string spacepixel = getStringTagValue(0x00280030, dataDcm);//space between pixels (mm)        
+        string spacepixel = getStringTagValue(0x00280030, dataDcm);//space between pixels (mm)
         QString SpacePixel = QString::fromStdString(spacepixel);
         QStringList SpaceList = SpacePixel.split("\\");
 
@@ -402,7 +395,7 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
     //Hors de la boucle for, ajout de la valeur max pour fin de chargement
     Chargement->setValue(*NbFichiers);
     delete Chargement;
-    
+
     EcartCoupe = fabs(PositionsVector[1]- PositionsVector[0]);
 
     float facteur = round(EcartCoupe * (1 / EcartPixel));
@@ -419,10 +412,11 @@ void Interface::ouvrirFichiers() //Ouvrir le dossier l'image en fonction du posi
     SpinBox1->setStyleSheet("QSpinBox { border: 0px solid grey; border-radius: 4px; background-color: rgb(230,230,230); color: black }");
     SpinBox2->setStyleSheet("QSpinBox { border: 0px solid grey; border-radius: 4px; background-color: rgb(230,230,230); color: black }");
     SpinBox3->setStyleSheet("QSpinBox { border: 0px solid grey; border-radius: 4px; background-color: rgb(230,230,230); color: black }");
-    
+
     slider1->setRange(0, *NbFichiers - 1);
     slider2->setRange(1, ligne - 1); //Valeurs du slider selon nb de fichiers
     slider3->setRange(1, colonne); //Valeurs du slider selon nb de fichiers
+
     slider1->setValue(*NbFichiers / 2);//Positionnement du cuseur a la moitié
     slider2->setValue(ligne / 2);//Positionnement du cuseur a la moitié
     slider3->setValue(colonne / 2);//Positionnement du cuseur a la moitié
@@ -506,7 +500,7 @@ void Interface::UtiliserCurseurIntensite()
 *
 * Valeur retournée : aucune
 *--------------------------------------------------------------------------*/
-void Interface::UtiliserSouris3D() 
+void Interface::UtiliserSouris3D()
 {
     if (*NbFichiers == 0) //Condition d'existence du dossier
         return;
@@ -524,15 +518,16 @@ void Interface::UtiliserSouris3D()
     //Condition On/Off
     if (value == 0) {
         *souris3D = 1;
+        cout << "mode3D DICOM *souris3D=1" << endl;
     }
     else {
         *souris3D = 0;
+        cout << "mode3D DICOM *souris3D=0" << endl;
     }
 }
 
 /*--------------------------------------------------------------------------
 * Fonctions : MajClicCoupe1(),MajClicCoupe2(),MajClicCoupe3()
-
 * Description : Mise à jour de 2 images en fonction du clic sur la troisième
 *
 * Arguments : e : évenement de la souris classique
@@ -571,7 +566,7 @@ void Interface::MajClicCoupe1(QMouseEvent* e)
         tailleLimite_Y = (label_y + ligne);
         NouvelleImageCoupe3 = (posi_x - label_x);
         NouvelleImageCoupe2 = (posi_y - label_y);
-       
+
         //Conditon tant qu'on clic sur l'image
         if (posi_x > label_x && posi_x< tailleLimite_X && posi_y>label_y && posi_y < tailleLimite_Y) {
 
@@ -598,7 +593,7 @@ void Interface::MajClicCoupe2(QMouseEvent* e)
 {
     if (*NbFichiers == 0) //Condition d'existence du dossier
         return;
-    
+
     //Initialisation des tailles limites
     int tailleLimite_X;
     int tailleLimite_Y;
@@ -621,7 +616,7 @@ void Interface::MajClicCoupe2(QMouseEvent* e)
     int label_y = coord.y();
     posi_x += label_x;
     posi_y += label_y;
-    
+
     //Condition de clic sur le bouton gauche
     if (e->button() == Qt::LeftButton && Qt::ControlModifier != QApplication::keyboardModifiers() && Qt::ShiftModifier != QApplication::keyboardModifiers()) {
 
@@ -629,7 +624,7 @@ void Interface::MajClicCoupe2(QMouseEvent* e)
         tailleLimite_Y = (label_y + ligne);
         NouvelleImageCoupe1 =(posi_x - label_x)/ (int)facteur;
         NouvelleImageCoupe3 = (posi_y - label_y);
-      
+
         //Conditon tant qu'on clic sur l'image
         if (posi_x > label_x && posi_x< tailleLimite_X && posi_y>label_y && posi_y < tailleLimite_Y) {
             if (*souris3D == 0) { //Si souris 3D désactivée
@@ -686,7 +681,7 @@ void Interface::MajClicCoupe3(QMouseEvent* e)
         tailleLimite_Y = (label_y + ligne);
         NouvelleImageCoupe1 = (int)((posi_x - label_x)/(int)facteur);
         NouvelleImageCoupe2 = (posi_y - label_y);
-        
+
         //Conditon tant qu'on clic sur l'image
         if (posi_x > label_x && posi_x< tailleLimite_X && posi_y>label_y && posi_y < tailleLimite_Y) {
             if (*souris3D == 0) { //Si souris 3D désactivée
@@ -741,11 +736,11 @@ void Interface::AffichageOriginal()
     *NbCouleurs = 0; //0 = Nuance de gris
 
     //Affichage des images
-    GestionImages(slider1->value()); 
+    GestionImages(slider1->value());
     GestionImagesLignes(slider2->value());
     GestionImagesColonnes(slider3->value());
 
-    
+
 }
 void Interface::AffichageJet()
 {
@@ -871,7 +866,7 @@ void Interface::ChangementIntensite(int valueIntensite)
 * Description : Prend en argument la valeur du slider quand il y a un changement
 * et affiche cette valeur dans le spinBox et affiche image correspondante
 *
-* Arguments : valueSlider1, valueSlider2, valueSlider3 : valeurs des sliders 
+* Arguments : valueSlider1, valueSlider2, valueSlider3 : valeurs des sliders
 * position
 *
 * Valeur retournée : aucune
@@ -901,10 +896,10 @@ void Interface::ActionSlider3(int valueSlider3)
 /*--------------------------------------------------------------------------
 * Fonctions : ActionSpin1(), ActionSpin2(), ActionSpin3()
 *
-* Description : Affichage de l'image et mise à jour du slider en fonction de 
+* Description : Affichage de l'image et mise à jour du slider en fonction de
 * la valeur indiquée dans le SpinBox
 *
-* Arguments : valueSpin1, valueSpin2, valueSpin3 : valeurs des saisies dans 
+* Arguments : valueSpin1, valueSpin2, valueSpin3 : valeurs des saisies dans
 * les spinBoxs
 *
 * Valeur retournée : aucune
@@ -912,21 +907,21 @@ void Interface::ActionSlider3(int valueSlider3)
 void Interface::ActionSpin1(int valueSpin1)
 {
     //Appel de la fonction GestionImages pour afficher une image dicom
-    GestionImages(valueSpin1); 
+    GestionImages(valueSpin1);
     //Maj du slider
     slider1->setValue(SpinBox1->value());
 }
 void Interface::ActionSpin2(int valueSpin2) //Récuperer la valeur du curseur lorsqu'il est déplacé
 {
     //Appel de la fonction GestionImages pour afficher une image dicom
-    GestionImagesLignes(valueSpin2); 
+    GestionImagesLignes(valueSpin2);
     //Maj du slider
     slider2->setValue(SpinBox2->value());
 }
 void Interface::ActionSpin3(int valueSpin3) //Récuperer la valeur du curseur lorsqu'il est déplacé
 {
     //Appel de la fonction GestionImages pour afficher une image dicom
-    GestionImagesColonnes(valueSpin3); 
+    GestionImagesColonnes(valueSpin3);
     //Maj du slider
     slider3->setValue(SpinBox3->value());
 }
@@ -945,12 +940,12 @@ void Interface::Action3DMouseTx() {
     //Condition si souris en mode interface 3D
     if (mode3D == 1)
         return;
- 
+
     //Condition d'utilisation de la souris
     int value = *souris3D;
 
     if (value == 0){ //Si souris 3D off
-        //Récupération du numéro de l'image précédemment affichée 
+        //Récupération du numéro de l'image précédemment affichée
         *NumImageTx = slider1->value();
         return;
     }
@@ -1009,7 +1004,7 @@ void Interface::Action3DMouseTx() {
             i = i + 15;
         }
     }
-    
+
     else if(i <= 0 ){
         i = 1;
     }
@@ -1102,7 +1097,7 @@ void Interface::Action3DMouseTy() {
         else if ((pTy <= *lastTyValue) && (pTy <= -150)) {
             i = i + 15;
         }
-        
+
     }
     else if (i <= 0) {
         i = 1;
@@ -1139,7 +1134,7 @@ void Interface::Action3DMouseTz() {
     if (mode3D == 1)
         return;
 
-    
+
     //Condition d'utilisation de la souris
     int value = *souris3D;
     if (value == 0) { //Si souris 3D off
@@ -1201,7 +1196,7 @@ void Interface::Action3DMouseTz() {
         else if ((pTz <= *lastTzValue) && (pTz <= -200)) {
             i = i + 15;
         }
-        
+
     }
 
     else if (i <= 0) {
@@ -1230,7 +1225,7 @@ void Interface::Action3DMouseTz() {
 
     //Mémorisation du numéro d'image
     *NumImageTz = i;
-    
+
     //Mémorisation de la dernière valeur TZ prise par la souris 3D
     *lastTzValue = pTz;
 }
@@ -1238,8 +1233,8 @@ void Interface::Action3DMouseTz() {
 /*--------------------------------------------------------------------------
 * Fonctions : Action3DMouseIntensite()
 *
-* Description : Modification de l'intensité des 3 coupes avec la souris 3D 
-* selon l'axe de rotation y 
+* Description : Modification de l'intensité des 3 coupes avec la souris 3D
+* selon l'axe de rotation y
 *
 * Arguments : aucun
 *
@@ -1286,7 +1281,7 @@ void Interface::Action3DMouseIntensite(){
         Action3DMouseTx();
         Action3DMouseTy();
         Action3DMouseTz();
-        
+
         //Conditions de modification de l'intensité
         if ((-pRy > 5) && (-pRy >= *lastRyValue)&&(-pRy<lim)) {
             i=i+30;
@@ -1301,7 +1296,7 @@ void Interface::Action3DMouseIntensite(){
     else if (i >= lim) {
         i = lim-1;
     }
-    
+
     //Mise à jour du slider intensité
     sliderIntensite->setValue(i);
 
@@ -1312,64 +1307,12 @@ void Interface::Action3DMouseIntensite(){
     *lastRyValue = -pRy;
 }
 
-/*--------------------------------------------------------------------------
-* Fonctions : DoubleClics()
-*
-* Description : Appel SaveAs si les 2 boutons de la souris 3D sont 
-* pressé enssemble ou non
-*
-* Arguments : aucun
-*
-* Valeur retournée : aucune
-*--------------------------------------------------------------------------*/
-void Interface::DoubleClics() {
-    //Condition si souris désactivée ou en mode interface 3D
-    if ((*souris3D == 0)||(mode3D == 1))
-        return;
 
-    //Condition de double clics
-    if ((clicD == 1) && (clicG == 1)) {
-        SaveAs();
-        clicD = 0;
-        clicG = 0;
-    }
-    else
-        return;
-}
-
-/*--------------------------------------------------------------------------
-* Fonctions : ClicGauche()
-*
-* Description : Active ou non la souris 3D avec clic sur le bouton gauche de 
-* la souris 3D
-*
-* Arguments : aucun
-*
-* Valeur retournée : aucune
-*--------------------------------------------------------------------------*/
-void Interface::ClicGauche(){
-    //Condition si souris en mode interface 3D
-    if (mode3D == 1)
-        return;
-
-    //Conditon si le bouton cliqué
-    if (OnOffSouris3D == 1) { //Au premier clic
-        *souris3D = 1; //Activation de la souris 3D
-        *MenuSouris3D = 0; //Le menu On/Off de la souris3D n'a pas la main
-        return;
-    }
-    else{ //Au deuxième clic
-        if (*MenuSouris3D == 1) //Si le menu On/Off de la souris3D a la main
-            return;
-        else //sinon
-            *souris3D = 0;
-   }
-}
 
 /*--------------------------------------------------------------------------
 * Fonctions : SaveAs()
 *
-* Description : Permet de screenshoter les trois coupes avec leur spinbox et 
+* Description : Permet de screenshoter les trois coupes avec leur spinbox et
 * de les enregistrer
 *
 * Arguments : aucun
@@ -1379,26 +1322,10 @@ void Interface::ClicGauche(){
 void Interface::SaveAs() {
 
     qApp->beep(); // Signal the screenshoot
-    
-    //Initialisation de la hauteur des images
-    int tailleLimite_Y;
-
-    //Récupération des coordonées de la SpinBox1
-    QPoint coords = SpinBox1->pos();
-    int spinbox_y = coords.y();
-    
-    //Récupération des coordonées de la coupe 3
-    QPoint coord3 = imageLabel3->pos();
-    int label3_y = coord3.y();
-
-    tailleLimite_Y = (label3_y + ligne);
-
-    //définition de la hauteur et de la largeur de capture
-    int hauteur_capture = tailleLimite_Y - 0.5*spinbox_y;
 
     // Prise du screenshoot
-    QPixmap pixmap = QPixmap::grabWindow(this->winId(), 0, spinbox_y, -1, hauteur_capture);
-    
+    QPixmap pixmap = QPixmap::grabWindow(this->winId());
+
     //Fenêtre d'enregistrement
     QString filePath = QFileDialog::getSaveFileName(this,tr("Enregistrer sous"),"../Screenshot_1.png", tr("Images (*.png *.xpm *.jpg)"));
 
@@ -1449,7 +1376,7 @@ void Interface::GestionImages(int NumeroImage)
     else
         valMax = *IntensiteVariableCoupe1;//Sinon modifié
 
-    //Récupération de l'emplacement dans le vecteur global de la première valeur de l'image prise en argument 
+    //Récupération de l'emplacement dans le vecteur global de la première valeur de l'image prise en argument
     int k = (colonne * ligne) * NumeroImage;
 
     //Reconstrution de l'image dans la matrice
@@ -1465,6 +1392,32 @@ void Interface::GestionImages(int NumeroImage)
                 image.at<unsigned char>(i, j) = ((*allpixels)[k] * 255) / valMax;
 
             k++; //Décalage d'une valeur dans le vecteur global
+        }
+    }
+    //Zoom de l'image
+    if (imageLabel1->isZoom && imageLabel1->zoom!=1)
+    {
+        cout << imageLabel1->zoom << endl;
+        switch (imageLabel1->zoom)
+        {
+        case 2 :
+            image = image(Rect(c*0.1,l*0.1,c*0.8,l*0.8));
+            break;
+        case 3 :
+            image = image(Rect(c*0.2,l*0.2,c*0.6,l*0.6));
+            break;
+        case 4 :
+            image = image(Rect(c*0.3,l*0.3,c*0.4,l*0.4));
+            break;
+        case 5 :
+            image = image(Rect(c*0.4,l*0.4,c*0.2,l*0.2));
+            break;
+        case 6 :
+            image = image(Rect(c*0.45,l*0.45,c*0.1,l*0.1));
+            break;
+        default : //Ne peut pas aller au dela d'un zoom 6
+            image = image(Rect(c*0.45,l*0.45,c*0.1,l*0.1));
+            break;
         }
     }
 
@@ -1504,21 +1457,23 @@ void Interface::GestionImages(int NumeroImage)
         break;
     }
 
-    //Affichage de l'image dans la fenêtre principale
-    if (*Mode == 0)
-    {
-        imageLabel1->data=QPixmap::fromImage(dest).scaled(QSize(c, l), Qt::IgnoreAspectRatio);
-        imageLabel1->setPixmap(imageLabel1->data); //Ajoute au layout
-        imageLabel1->setMaximumSize(c, l);
-        layout->addWidget(imageLabel1, 1, 0, Qt::AlignHCenter);//Ajout du layout à l'image
-    }
+    //Affichage de l'image dans la fen?tre principale
+        if (*Mode == 0)
+        {
+            imageLabel1->data=QPixmap::fromImage(dest).scaled(QSize(c,l), Qt::IgnoreAspectRatio);
+            imageLabel1->setPixmap(imageLabel1->data); //Ajoute au layout
+            imageLabel1->setMaximumSize(c, l);
+            layout->addWidget(imageLabel1, 1, 0, Qt::AlignHCenter);//Ajout du layout ? l'image
+            imageLabel1->repaint();
+
+        }
 
 }
 void Interface::GestionImagesLignes(int NumeroImage)
 {
     //Création d'un image vide de la taille obtenue dans OuvrirFichier
     Mat image = Mat::zeros(*NbFichiers - 1, colonne, CV_8UC1);//Image de la taille obtenue avec data
-    
+
     //Mise en local des dimensions de l'image recréée
     int l = image.rows;
     int c = image.cols;
@@ -1529,7 +1484,7 @@ void Interface::GestionImagesLignes(int NumeroImage)
 
     //Valeur d'intensité de comparaison selon les cas de figure
     *IntensiteMaxInitCoupe2 = 0;//globale
-    
+
     //Navigation dans toute l'image prise en argument
     int k = 0;
     QVector<unsigned short> Valeurdefinitif;
@@ -1569,6 +1524,33 @@ void Interface::GestionImagesLignes(int NumeroImage)
                 image.at<unsigned char>(i, j) = (Valeurdefinitif[k] * 255) / valMax;
             }
             k++; //Décalage d'une valeur dans le vecteur global
+        }
+    }
+
+    //Zoom de l'image
+    if (imageLabel2->isZoom && imageLabel2->zoom!=1)
+    {
+        cout << imageLabel2->zoom << endl;
+        switch (imageLabel2->zoom)
+        {
+        case 2 :
+            image = image(Rect(c*0.1,l*0.1,c*0.8,l*0.8));
+            break;
+        case 3 :
+            image = image(Rect(c*0.2,l*0.2,c*0.6,l*0.6));
+            break;
+        case 4 :
+            image = image(Rect(c*0.3,l*0.3,c*0.4,l*0.4));
+            break;
+        case 5 :
+            image = image(Rect(c*0.4,l*0.4,c*0.2,l*0.2));
+            break;
+        case 6 :
+            image = image(Rect(c*0.45,l*0.45,c*0.1,l*0.1));
+            break;
+        default : //Ne peut pas aller au dela d'un zoom 6
+            image = image(Rect(c*0.45,l*0.45,c*0.1,l*0.1));
+            break;
         }
     }
 
@@ -1615,7 +1597,7 @@ void Interface::GestionImagesLignes(int NumeroImage)
         dest = QImage((uchar*)Rimage.data, Rimage.cols, Rimage.rows, Rimage.step, QImage::Format_BGR888); //Conversion d'un MAT en QImage
         break;
     }
-   
+
 
     //Affichage de l'image dans la fenêtre principale
     if (*Mode == 0)
@@ -1624,6 +1606,8 @@ void Interface::GestionImagesLignes(int NumeroImage)
         imageLabel2->setPixmap(imageLabel2->data); //Ajoute au layout
         imageLabel2->setMaximumSize(*NbFichiers * (int)facteur, c);
         layout->addWidget(imageLabel2, 1, 1, Qt::AlignHCenter);//Ajout du layout à l'image
+        imageLabel2->repaint();
+
     }
 
 }
@@ -1646,11 +1630,11 @@ void Interface::GestionImagesColonnes(int NumeroImage)
 
     //Valeur d'intensité de comparaison selon les cas de figure
     *IntensiteMaxInitCoupe3 = 0;//globale
-    
+
     //Navigation dans toute l'image prise en argument
     int k = 0;
     QVector<unsigned short>Valeurdefinitif2; //Nouveau vecteur contenant les pixels de l'image
-    for (int nb = NumeroImage; nb < colonne*ligne*(*NbFichiers); nb += colonne)//Condition pour avoir l'image selon la bonne coupe 
+    for (int nb = NumeroImage; nb < colonne*ligne*(*NbFichiers); nb += colonne)//Condition pour avoir l'image selon la bonne coupe
     {
         Valeurdefinitif2.push_back((*allpixels)[nb]);//Vecteur definitif avec valeurs de l'image a afficher (tel colonnes de chaque image)
     }
@@ -1695,7 +1679,34 @@ void Interface::GestionImagesColonnes(int NumeroImage)
             k++; //Décalage d'une valeur dans le vecteur global
         }
     }
-    //merge(planes, image);
+    //Zoom de l'image
+
+    if (imageLabel3->isZoom && imageLabel3->zoom!=1)
+    {
+
+        cout << imageLabel3->zoom << endl;
+        switch (imageLabel3->zoom)
+        {
+        case 2 :
+            image = image(Rect(c*0.1,l*0.1,c*0.8,l*0.8));
+            break;
+        case 3 :
+            image = image(Rect(c*0.2,l*0.2,c*0.6,l*0.6));
+            break;
+        case 4 :
+            image = image(Rect(c*0.3,l*0.3,c*0.4,l*0.4));
+            break;
+        case 5 :
+            image = image(Rect(c*0.4,l*0.4,c*0.2,l*0.2));
+            break;
+        case 6 :
+            image = image(Rect(c*0.45,l*0.45,c*0.1,l*0.1));
+            break;
+        default : //Ne peut pas aller au dela d'un zoom 6
+            image = image(Rect(c*0.45,l*0.45,c*0.1,l*0.1));
+            break;
+        }
+    }
 
     //Rotation de 90° de l'image
     rotate(image, image, cv::ROTATE_90_CLOCKWISE);
@@ -1749,7 +1760,7 @@ void Interface::GestionImagesColonnes(int NumeroImage)
         c = 1.75 * c;//Coeff de 1.75
     }*/
 
-    
+
 
     //Affichage de l'image dans la fenêtre principale
     if (*Mode == 0)
@@ -1758,8 +1769,38 @@ void Interface::GestionImagesColonnes(int NumeroImage)
         imageLabel3->setPixmap(imageLabel3->data); //Ajoute au layout
         imageLabel3->setMaximumSize(*NbFichiers * (int)facteur, c);
         layout->addWidget(imageLabel3, 1, 2, Qt::AlignHCenter);//Ajout du layout à l'image
+        imageLabel3->repaint();
+
     }
 }
+
+/*--------------------------------------------------------------------------
+* Fonctions : callFunction(QWheelEvent* event)
+*
+* Description : suite au connect, appel la fonction GestionImages, etc...
+*
+* Arguments : e : QWheelEvent
+*
+* Valeur retourn?e : aucune
+*--------------------------------------------------------------------------*/
+void Interface::callFunction1(QWheelEvent* event)
+{
+    cout << "callFunction1" << endl;
+    GestionImages(slider1->value());
+}
+
+void Interface::callFunction2(QWheelEvent* event)
+{
+    cout << "callFunction2" << endl;
+    GestionImagesLignes(slider2->value());
+}
+
+void Interface::callFunction3(QWheelEvent* event)
+{
+    cout << "callFunction3" << endl;
+    GestionImagesColonnes(slider3->value());
+}
+
 
 /*--------------------------------------------------------------------------
 * Fonctions : mousePressEvent()
@@ -1777,7 +1818,7 @@ void Interface::mousePressEvent(QMouseEvent* e){
 /*--------------------------------------------------------------------------
 * Fonctions : closeEvent()
 *
-* Description : Appel de la fonction Supprimer qui permet de supprimer le 
+* Description : Appel de la fonction Supprimer qui permet de supprimer le
 * dossier image et son contenu lors de la fermeture de la fenêtre principale
 *
 * Arguments : event : évenement de fermeture de la fenêtre
@@ -1794,7 +1835,7 @@ void Interface::closeEvent(QCloseEvent* event)
 /*--------------------------------------------------------------------------
 * Fonctions : AIDE()
 *
-* Description : Affiche une fenêtre expliquant les diversses actions de la 
+* Description : Affiche une fenêtre expliquant les diversses actions de la
 * souris 3D
 *
 * Arguments : aucun
@@ -1805,7 +1846,7 @@ void Interface::AIDE()
 {
     QMessageBox aide;
     aide.setWindowTitle("Aide utilisation logiciel avec Souris 3D");
-    QPixmap image ("C:/Users/vince/Desktop/ISEN 2020-2021/Projet M1/IRM_Souris3D/InfSouris.png");
+    QPixmap image ("C:/ImagesProjet/InfSouris.png");
     QPixmap image1;
     image1 = image.scaled(QSize(200,200), Qt::IgnoreAspectRatio);
     aide.setIconPixmap(QPixmap(image1));
@@ -1826,7 +1867,7 @@ void Interface::AIDE()
 /*--------------------------------------------------------------------------
 * Fonctions : fenetreActive()
 *
-* Description : Change la valeur de la variable globale mode3D en fonction 
+* Description : Change la valeur de la variable globale mode3D en fonction
 * de la fenêtre active
 *
 * Arguments : aucun
@@ -1909,7 +1950,7 @@ Interface::Interface() : QWidget() //Widget = fenetre principale
     Info = new QMenu("&Informations");//init menu infos
     Affichage = new QMenu("&Affichage");//Init menu affichage
     Outils = new QMenu("&Outils");//Init menu outils
-    
+
     //Ajout des actions aux menus
     Outils->addAction("Activer/Desactiver Souris 3D", this, SLOT(UtiliserSouris3D()));
     Outils->addAction("Activer/Desactiver Intensite", this, SLOT(UtiliserCurseurIntensite()));//Action d'affichage slider1
@@ -1969,7 +2010,7 @@ Interface::Interface() : QWidget() //Widget = fenetre principale
     setLayout(layout);//Mise en place du layout
     setWindowTitle("Logiciel de navigation 3D dans les images IRM");//titre fenetre
     setWindowIcon(QIcon("icon.png"));//Mettre un Icon a la fenetre
-    
+
 
     //----------Mise en place des connexions entre l'interface et les actions à réaliser----------
     //Variation de la position des curseurs
@@ -1988,22 +2029,18 @@ Interface::Interface() : QWidget() //Widget = fenetre principale
     connect(this->imageLabel2, SIGNAL(clicked(QMouseEvent*)), this, SLOT(MajClicCoupe2(QMouseEvent*)));
     connect(this->imageLabel3, SIGNAL(clicked(QMouseEvent*)), this, SLOT(MajClicCoupe3(QMouseEvent*)));
 
-    /*
-    //Clicked pour rectangle
-    connect(this->imageLabel1, SIGNAL(clicked(QMouseEvent*)), this->imageLabel1, SLOT(RectCoupe(QMouseEvent*)));
-    connect(this->imageLabel2, SIGNAL(clicked(QMouseEvent*)), this->imageLabel2, SLOT(RectCoupe(QMouseEvent*)));
-    connect(this->imageLabel3, SIGNAL(clicked(QMouseEvent*)), this->imageLabel3, SLOT(RectCoupe(QMouseEvent*)));
-    */
+    //Scroll pour zoomer
+    connect(this->imageLabel1, SIGNAL(scrolled(QWheelEvent*)), this, SLOT(callFunction1(QWheelEvent*)));
+    connect(this->imageLabel2, SIGNAL(scrolled(QWheelEvent*)), this, SLOT(callFunction2(QWheelEvent*)));
+    connect(this->imageLabel3, SIGNAL(scrolled(QWheelEvent*)), this, SLOT(callFunction3(QWheelEvent*)));
 
     //Actualisation des données de la souris en fonction du timer
     connect(timer, SIGNAL(timeout()), this, SLOT(fenetreActive()));
-    connect(timer, SIGNAL(timeout()), this, SLOT(ClicGauche()));
     connect(timer, SIGNAL(timeout()), this, SLOT(Action3DMouseTx()));
     connect(timer, SIGNAL(timeout()), this, SLOT(Action3DMouseTy()));
     connect(timer, SIGNAL(timeout()), this, SLOT(Action3DMouseTz()));
     connect(timer, SIGNAL(timeout()), this, SLOT(Action3DMouseIntensite()));
-    connect(timer, SIGNAL(timeout()), this, SLOT(DoubleClics()));
-    
+
     //Temps d'intervalle entre actualisations : ici 10ms
     timer->start(10);
 
