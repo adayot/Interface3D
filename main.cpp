@@ -1,8 +1,6 @@
 /**
- * @Authors: LE FUR Anthony / LE BERRE Thomas
+ * @Authors: DAYOT Amelie / DREAU Vincent
  * @Company: ISEN Yncréa Ouest
- * @Email: anthony.le-fur@isen-ouest.yncrea.fr / thomas.le-berre@isen-ouest.yncrea.fr
- * @Last Modified: 30-Apr-2020
  */
 
 #include "Read_data_3Dmouse.h"
