@@ -30,7 +30,7 @@ extern qint16*		NbCouleurs;
 extern QVector<unsigned short>* allpixels;
 extern FLOAT		EcartCoupe;
 extern FLOAT        EcartPixel;
-
+extern FLOAT        EpaisseurCoupe;
 
 
 //Class My3DScene
@@ -86,6 +86,10 @@ public:
     image* monImage2;
     image* monImage3;
 
-    bool inside = false;
     int zoom = 0;
+
+    QVector<unsigned short> decoupe;
+    QVector<unsigned short> decoupeFull;
+
+    bool isDecoupe3D = false;
 };

@@ -37,16 +37,15 @@ private:
 public:
     Widget3D(image* image1, image* image2, image* image3);
 	My3DScene* Visualisation3D;
-	void closeEvent(QCloseEvent* event);
+    void closeEvent(QCloseEvent* event);
 signals:
 
 public slots:
 
-    void Actu3D();
-	void centrage();
+	void Actu3D();
+    void centrage();
 	void AIDE3D();
     void SaveAs3D();
-
 
 public:	
 	QGridLayout* Layout;

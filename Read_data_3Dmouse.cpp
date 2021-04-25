@@ -1,26 +1,28 @@
 /**
  * @Authors: DAYOT Amelie / DREAU Vincent
- * @Company: ISEN Yncr?a Ouest
+ * @Company: ISEN Yncréa Ouest
  */
 
 #include "Read_data_3Dmouse.h"
 
-//D?finition des variables globales
+//Définition des variables globales
 SiHdl        devHdl;
 HWND         hWndMain;
 INT          pTx, pTy, pTz, pRx, pRy, pRz;
 INT          Intensite=0,prevInt=0;
 INT          OnOffSouris3D=0,prevOnOffSouris3D=0;
+INT          clicD = 0,clicG = 0;
+INT          FixeClic = 0, prevFixeClic=0;
 
 /*--------------------------------------------------------------------------
 * Fonction : Init3DMouse()
 *
-* Description : Appel SbInit et v?rifie si l'initialisation de la souris 3D
-* c'est bien pass?
+* Description : Appel SbInit et vérifie si l'initialisation de la souris 3D
+* s'est bien passé
 *
 * Arguments : aucun
 *
-* Valeur retourn?e : aucune
+* Valeur retournée : aucune
 *--------------------------------------------------------------------------*/
 void Init3DMouse() {
     int res;
@@ -28,13 +30,13 @@ void Init3DMouse() {
     // Initialisation de la souris 3D
     res = SbInit();
 
-    //Conditions de v?rification d'erreur
+    //Conditions de vérification d'erreur
     if (res < 1) //Si erreur
     {
         QMessageBox error;
         error.setIcon(QMessageBox::Warning);
         error.setWindowIcon(QIcon("icon.png"));
-        error.setText("Desole - Aucun peripherique 3Dconnexion pris en charge disponible"); //Ajout ? la boite QMessageBox
+        error.setText("Desole - Aucun peripherique 3Dconnexion pris en charge disponible"); //Ajout à la boite QMessageBox
         error.exec(); //Affichage boite de dialogue
 
     }
@@ -51,39 +53,39 @@ void Init3DMouse() {
 *
 * Arguments : aucun
 *
-* Valeur retourn?e : res : r?sultat de SiOpen, =0 si erreur =1 si ?a marche
+* Valeur retournée : res : résultat de SiOpen, =0 si erreur =1 si ça marche
 *--------------------------------------------------------------------------*/
 int SbInit()
 {
-    int res; //r?sultat de SiOpen, ? retourner
-    SiOpenDataEx oData; //Donn?es ind?pendantes du syst?me d'exploitation
+    int res; //résultat de SiOpen, à retourner
+    SiOpenDataEx oData; //Données indépendantes du système d'exploitation
 
-    //Initialisation de la biblioth?que d'entr?es SpaceWare
+    //Initialisation de la bibliothèque d'entrées SpaceWare
     if (SiInitialize() == SPW_DLL_LOAD_ERROR)
     {
         //Message d'erreur
         QMessageBox error;
         error.setIcon(QMessageBox::Warning);
         error.setWindowIcon(QIcon("icon.png"));
-        error.setText("Erreur : Impossible de charger la librairie SiAppDll"); //Ajout ? la boite QMessageBox
+        error.setText("Erreur : Impossible de charger la librairie SiAppDll"); //Ajout à la boite QMessageBox
         error.exec(); //Affichage boite de dialogue
     }
 
-    //Initialisation des donn?es sp?cifiques ? la platfomre Windows
-    SiOpenWinInitEx(&oData, hWndMain);
+    //Initialisation des données spécifiques à la platfomre Windows
+    SiOpenWinInitEx(&oData, hWndMain); 
 
     //Dit au pilote que nous voulons recevoir des V3DCMD au lieu de V3DKeys
-    //SiOpenWinAddHintBoolEnum(&oData, SI_HINT_USESV3DCMDS, SPW_TRUE);
+    SiOpenWinAddHintBoolEnum(&oData, SI_HINT_USESV3DCMDS, SPW_TRUE);
 
     //Dit au driver que nous avons besoin d'une version minimale du driver de 17.5.5.
-    //Cela pourrait ?tre utilis? pour indiquer au driver qu'il doit ?tre mis ? niveau avant de pouvoir ex?cuter correctement cette application.
+    //Cela pourrait être utilisé pour indiquer au driver qu'il doit être mis à niveau avant de pouvoir exécuter correctement cette application.
     SiOpenWinAddHintStringEnum(&oData, SI_HINT_DRIVERVERSION, (WCHAR*)"17.5.5");
 
-    //Ouverture des donn?es
+    //Ouverture des données
     if ((devHdl = SiOpenEx(L"Logiciel de navigation 3D dans les images IRM", SI_ANY_DEVICE, SI_NO_MASK, SI_EVENT, &oData)) == NULL)
     {
-        SiTerminate();  //Appel? pour fermer la biblioth?que d'entr?e SpaceWare
-
+        SiTerminate();  //Appelé pour fermer la bibliothèque d'entrée SpaceWare
+        
         //Impossible d'ouvrir l'appareil
         res = 0;
         return res;
@@ -92,66 +94,70 @@ int SbInit()
         QMessageBox error;
         error.setIcon(QMessageBox::Warning);
         error.setWindowIcon(QIcon("icon.png"));
-        error.setText("Erreur : Probl?me avec l'initialisation de la souris 3D"); //Ajout ? la boite QMessageBox
+        error.setText("Erreur : Problème avec l'initialisation de la souris 3D"); //Ajout à la boite QMessageBox
         error.exec(); //Affichage boite de dialogue
     }
     else
     {
         SiDeviceName devName;
         SiGetDeviceName(devHdl, &devName);
-
-        //Appareil ouvert avec succ?s
+        
+        //Appareil ouvert avec succès
         res = 1;
         return res;
     }
-
-
+    
+    
 
 }
 
 /*--------------------------------------------------------------------------
 * Fonction : DispatchLoopNT()
 *
-* Description : Contient la boucle de message principale qui v?rifie
-* constamment les ?v?nements de souris 3D et les g?re de mani?re appropri?e
+* Description : Contient la boucle de message principale qui vérifie 
+* constamment les événements de souris 3D et les gère de manière appropriée
 *
 * Arguments : aucun
 *
-* Valeur retourn?e :  msg.wparam : ?v?nement pass? ? la fen?tre
+* Valeur retournée :  msg.wparam : événement passé à la fenêtre
 *--------------------------------------------------------------------------*/
 int DispatchLoopNT()
 {
-    MSG            msg; //Message entrant ? ?valuer
-    BOOL           handled; //Le message est-il encore g?r? ?
-    SiSpwEvent     Event; //?v?nement SpaceWare
-    SiGetEventData EData; //Donn?es d'?v?nement SpaceWare
-
+    MSG            msg; //Message entrant à évaluer
+    BOOL           handled; //Le message est-il encore géré ?
+    SiSpwEvent     Event; //Événement SpaceWare
+    SiGetEventData EData; //Données d'événement SpaceWare
+    
     //Initialisation du handled
-    handled = SPW_FALSE;
+    handled = SPW_FALSE; 
 
     //Boucle de message
     while (GetMessage(&msg, NULL, 0, 0))
     {
         handled = SPW_FALSE;
 
-        //Init des donn?es sp?cifiques ? la plateforme Windows pour un appel ? SiGetEvent
+        //Init des données spécifiques à la plateforme Windows pour un appel à SiGetEvent
         SiGetEventWinInit(&EData, msg.message, msg.wParam, msg.lParam);
 
-        //V?rification si le msg ?tait un ?v?nement de souris 3D et le traiter
+        //Vérification si le msg était un événement de souris 3D et le traiter
         if (SiGetEvent(devHdl, SI_AVERAGE_EVENTS, &EData, &Event) == SI_IS_EVENT)
         {
             if (Event.type == SI_MOTION_EVENT)
             {
-                //Processus ?v?nement de mouvements de la souris 3D
+                //Processus événement de mouvements de la souris 3D
                 SbMotionEvent(&Event);
             }
+            else if (Event.type == SI_CMD_EVENT)
+            {
+                //Processus événement des boutons de la souris 3D
+                BoutonsEvent(&Event); //V3DCMD_* events
+            }
 
-            //?v?nement de souris 3D g?r?
+            //Événement de souris 3D géré
             handled = SPW_TRUE;
         }
 
-
-        //Si c'est pas un ?v?nement de souris 3D, laissez Windows le g?rer
+        //Si c'est pas un événement de souris 3D, laissez Windows le gérer
         if (handled == SPW_FALSE)
         {
             TranslateMessage(&msg);
@@ -162,16 +168,15 @@ int DispatchLoopNT()
     return((int)msg.wParam);
 }
 
-
 /*--------------------------------------------------------------------------
 * Fonction : SbMotionEvent()
 *
-* Description : R?cup?ration des informations de mouvement et stokage dans
+* Description : Récupération des informations de mouvement et stokage dans 
 * des variables globales
 *
-* Arguments : *pEvent : Contient des donn?es d'un ?v?nement de souris 3D
+* Arguments : *pEvent : Contient des données d'un événement de souris 3D
 *
-* Valeur retourn?e :  aucune
+* Valeur retournée :  aucune
 *--------------------------------------------------------------------------*/
 void SbMotionEvent(SiSpwEvent* pEvent)
 {
@@ -181,4 +186,74 @@ void SbMotionEvent(SiSpwEvent* pEvent)
     pRx = pEvent->u.spwData.mData[SI_RX];
     pRy = pEvent->u.spwData.mData[SI_RY];
     pRz = pEvent->u.spwData.mData[SI_RZ];
+}
+
+/*--------------------------------------------------------------------------
+* Fonction : BoutonsEvent()
+*
+* Description : Récupération des événement liés aux boutons de la souris 3D
+*
+* Arguments : *pEvent : Contient des données d'un événement de souris 3D
+*
+* Valeur retournée :  aucune
+*--------------------------------------------------------------------------*/
+void BoutonsEvent(SiSpwEvent* pEvent)
+{ 
+    switch (pEvent->u.cmdEventData.functionNumber)
+    {
+    //Bouton de gauche
+    case V3DCMD_KEY_F1:
+        clicG = pEvent->u.cmdEventData.pressed;
+
+        //Condition si souris en mode interface 3D
+        if (mode3D == 1)
+            return;
+
+        if ((clicG == 1) && (clicD == 0)) {
+            int i = prevOnOffSouris3D;
+            if (i == 0) {
+                OnOffSouris3D = 1;
+            }
+            else {
+                OnOffSouris3D = 0;
+            }
+            prevOnOffSouris3D = OnOffSouris3D;
+        }
+
+        break;
+
+    //Bouton de droite
+    case V3DCMD_KEY_F2:
+        clicD = pEvent->u.cmdEventData.pressed;
+        if ((pEvent->u.cmdEventData.pressed == 1) && (clicG==0)) {
+            //Condition si souris en mode interface 3D
+            if (mode3D == 1) {
+                int j = prevFixeClic;
+                if (j == 0) {
+                    FixeClic = 1;
+                }
+                else {
+                    FixeClic = 0;
+                }
+                prevFixeClic = FixeClic;
+            }
+
+            //Condition si souris en mode interface 2D
+            else if(mode3D==0){
+                int i = prevInt;
+                if (i == 0) {
+                    Intensite = 1;
+                }
+                else {
+                    Intensite = 0;
+                }
+                prevInt = Intensite;
+            }
+            
+        }
+        break;
+
+    default:
+        break;
+    }
 }

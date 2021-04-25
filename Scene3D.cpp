@@ -71,22 +71,27 @@ void My3DScene::initializeGL()
 
     //Appel de la fonction pour la représentation 3D d'une zone sélectionnée
     if ((monImage1->rectangle && monImage2->rectangle) || (monImage1->rectangle && monImage3->rectangle) || (monImage2->rectangle && monImage3->rectangle)){
+        isDecoupe3D = true; //Utile pour le paintGL, lors d'un zoom dans les coupes, redimenssione le vecteur
         //Création d'un QVector<unsigned short>* decoupe, de la même taille que allpixels, on l'initialise rempli de 0
-        QVector<unsigned short> decoupe = *allpixels;
+        decoupe = *allpixels;
         for (int i=0; i<decoupe.size(); i++) decoupe[i]=0;
 
         //Appel de la fonction decoupe3D() pour avoir un QVector retaillé.
         pixelVoisin = decoupe3D(decoupe); //On met les valeurs de decoupe dans pixelVoisin
+        decoupeFull = pixelVoisin; //Stock le vecteur découpé mais pas vidé pour pouvoir l'utiliser dans paintGL pour afficher entièrement la première coupe
         pixelVoisinFunc(&pixelVoisin); //Appel de la fonction pour remplir pixelVoisin
     }
 
     else {
+        isDecoupe3D = false;
         //Appel de la fonction pour remplir pixelVoisin
         pixelVoisin = *allpixels; //Copie de allpixels dans pixelVoisin pour ne pas gêner les autres utilisations de allpixels
         pixelVoisinFunc(&pixelVoisin);
     }
 
     //Mode openGL
+    glClearColor(0.5,0.5,0.5,1.0); // Gris par défaut
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // On remplit le tampon
     glShadeModel(GL_FLAT);
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_BLEND);
@@ -102,8 +107,7 @@ void My3DScene::initializeGL()
     Chargement.setWindowModality(Qt::WindowModal);
     Chargement.setMinimumDuration(5);//Pas de temps mini de chargement
 
-    glClearColor(0.5,0.5,0.5,0.0); // Gris par défaut
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT); // On remplit le tampon
+
 
     // Paramètres fournis pour la caméra
     glMatrixMode(GL_MODELVIEW);
@@ -113,8 +117,8 @@ void My3DScene::initializeGL()
         glNewList(k+1, GL_COMPILE); //Création d'une nouvelle liste. On commence à 1 car la coupe 0 va servir lors des zoom dans la reconstruction 3D pour réafficher la première coupe entièrement
         for (int y=0; y < ligne; y++){
             for (int x=0; x < colonne; x++){
-                if ((int)pixelVoisin[k*256*256 + y*256 + x] > 50){ //Seuillage : ignore les pixels trop noir
-                    drawCube(pixelVoisin[k*256*256 + y*256 + x], x, y, k);//Appel de la fonction pour dessiner le voxel
+                if ((int)pixelVoisin[k*ligne*colonne + y*colonne + x] > 50 && (int)pixelVoisin[k*ligne*colonne + y*colonne + x] < 255){ //Seuillage : ignore les pixels trop noir
+                    drawCube(pixelVoisin[k*ligne*colonne + y*colonne + x], x, y, (1.8*EpaisseurCoupe)*k);//Appel de la fonction pour dessiner le voxel
                     c++;
                 }
             }
@@ -124,7 +128,7 @@ void My3DScene::initializeGL()
 
     //Ajout de la valeur max pour fin de chargement
     Chargement.setValue(*NbFichiers);
-    cout << "Nombre de voxels affichés : " << c << endl; //Affiche compteur de voxel
+    cout << "Nombre de voxels affiches : " << c << endl; //Affiche compteur de voxel
 
     glFlush();
 }
@@ -154,11 +158,11 @@ void My3DScene::pixelVoisinFunc(QVector<unsigned short>* pixelVoisin)
                  *et pixel dessus et pixel dessous peuvent être affichés,
                  *on récupère l'indice du pixel au milieu qu'on affichera pas
                 */
-                if ((int)(*pixelVoisin)[(k-1)*256*256 + y*256 + x]>45 && (int)(*pixelVoisin)[(k+1)*256*256 + y*256 + x]>45
-                   && (int)(*pixelVoisin)[k*256*256 + y*256 + (x+1)]>45 && (int)(*pixelVoisin)[k*256*256 + y*256 + (x-1)]>45
-                   && (int)(*pixelVoisin)[k*256*256 + (y-1)*256 + x]>45 && (int)(*pixelVoisin)[k*256*256 + (y+1)*256 + x]>45){
+                if ((int)(*pixelVoisin)[(k-1)*ligne*colonne + y*colonne + x]>45 && (int)(*pixelVoisin)[(k+1)*ligne*colonne + y*colonne + x]>45
+                   && (int)(*pixelVoisin)[k*ligne*colonne + y*colonne + (x+1)]>45 && (int)(*pixelVoisin)[k*ligne*colonne + y*colonne + (x-1)]>45
+                   && (int)(*pixelVoisin)[k*ligne*colonne + (y-1)*colonne + x]>45 && (int)(*pixelVoisin)[k*ligne*colonne + (y+1)*colonne + x]>45){
 
-                   tab.push_back(k*256*256 + y*256 + x); //Ajoute l'indice du pixel à ne pas afficher dans tab
+                   tab.push_back(k*ligne*colonne + y*colonne + x); //Ajoute l'indice du pixel à ne pas afficher dans tab
                 } //fin if
             } //fin for colone
         } //fin for ligne
@@ -185,33 +189,48 @@ void My3DScene::pixelVoisinFunc(QVector<unsigned short>* pixelVoisin)
 QVector<unsigned short> My3DScene::decoupe3D(QVector<unsigned short> decoupe)
 {
     if (monImage1->rectangle && monImage2->rectangle){ //1ere et 2eme images
-        for (int k=((monImage2->startX)*(*NbFichiers))/156; k < ((monImage2->endX)*(*NbFichiers))/156; k++){
+        for (int k=((monImage2->startX)*(*NbFichiers))/(monImage2->endX); k < ((monImage2->endX)*(*NbFichiers))/(monImage2->endX); k++){
             for (int y=monImage1->startY; y < monImage1->endY; y++){
                 for (int x=monImage1->startX; x < monImage1->endX; x++){
-                    decoupe[k*256*256 + y*256 + x]=(*allpixels)[k*256*256 + y*256 + x]; //On met dans decoupe la valeur du pixel de allpixels à la position actuelle
+                    decoupe[k*ligne*colonne + y*colonne + x]=(*allpixels)[k*ligne*colonne + y*colonne + x]; //On met dans decoupe la valeur du pixel de allpixels à la position actuelle
                 }//fin for x
             }//fin for y
         }//fin for k
     }
     else if (monImage1->rectangle && monImage3->rectangle){
-        for (int k=((monImage3->startX)*(*NbFichiers))/156; k < ((monImage3->endX)*(*NbFichiers))/156; k++){
+        for (int k=((monImage3->startX)*(*NbFichiers))/(monImage3->endX); k < ((monImage3->endX)*(*NbFichiers))/(monImage3->endX); k++){
             for (int y=monImage1->startY; y < monImage1->endY; y++){
                 for (int x=monImage1->startX; x < monImage1->endX; x++){
-                    decoupe[k*256*256 + y*256 + x]=(*allpixels)[k*256*256 + y*256 + x];
+                    decoupe[k*ligne*colonne + y*colonne + x]=(*allpixels)[k*ligne*colonne + y*colonne + x];
                 }//fin for x
             }//fin for y
         }//fin for k
-
     }
     else if (monImage2->rectangle && monImage3->rectangle){
-        for (int k=((monImage2->startX)*(*NbFichiers))/156; k < ((monImage2->endX)*(*NbFichiers))/156; k++){
+        for (int k=((monImage2->startX)*(*NbFichiers))/(monImage2->endX); k < ((monImage2->endX)*(*NbFichiers))/(monImage2->endX); k++){
             for (int y=monImage3->startY; y < monImage3->endY; y++){
-                for (int x=monImage3->startX; x < monImage3->endX; x++){
-                    decoupe[k*256*256 + y*256 + x]=(*allpixels)[k*256*256 + y*256 + x];
+                for (int x=monImage2->startX; x < monImage2->endX; x++){
+                    decoupe[k*ligne*colonne + y*colonne + x]=(*allpixels)[k*ligne*colonne + y*colonne + x];
                 }//fin for x
             }//fin for y
         }//fin for k
     }
+
+    //Remettre aux valeurs initiales les curseurs pour pouvoir repasser en 2D puis en 3D avec la reconstruction complète
+    monImage1->startX = 0;
+    monImage1->startY = 0;
+    monImage1->endX = colonne;
+    monImage1->endY = ligne;
+
+    monImage2->startX = 0;
+    monImage2->startY = 0;
+    monImage2->endX = colonne;
+    monImage2->endY = ligne;
+
+    monImage3->startX = 0;
+    monImage3->startY = 0;
+    monImage3->endX = colonne;
+    monImage3->endY = ligne;
 
     //On retourne les valeurs de decoupe
     return decoupe;
@@ -231,51 +250,52 @@ QVector<unsigned short> My3DScene::decoupe3D(QVector<unsigned short> decoupe)
 void My3DScene::drawCube(unsigned short val, int x, int y, int z)
 {
     float Val = ((float)val/255.0);
+    //z *= EpaisseurCoupe;
     // On dessine des quadrilatères reliés entre eux grâce à GL_QUADS
     glBegin(GL_QUADS);
 
         //Gauche
-        glColor4f(Val, Val, Val, 1.0f);
+        glColor4f(Val, Val, Val, 0.6f);
             glNormal3d(-1.0,0.0,0.0);
-            glVertex3d( x-1, y+1, z+1);
-            glVertex3d( x-1, y+1, z-1);
-            glVertex3d( x-1, y-1, z-1);
-            glVertex3d( x-1, y-1, z+1);
+            glVertex3d( x-0.9, y+0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x-0.9, y+0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x-0.9, y-0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x-0.9, y-0.9, z+(0.9*EpaisseurCoupe));
         //Au-dessus
-        glColor4f(Val, Val, Val, 1.0f);
+        glColor4f(Val, Val, Val, 0.6f);
             glNormal3d(0.0,1.0,0.0);
-            glVertex3d( x-1, y+1, z+1);
-            glVertex3d( x+1, y+1, z+1);
-            glVertex3d( x+1, y+1, z-1);
-            glVertex3d( x-1, y+1, z-1);
+            glVertex3d( x-0.9, y+0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y+0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y+0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x-0.9, y+0.9, z-(0.9*EpaisseurCoupe));
         //En-dessous
-        glColor4f(Val, Val, Val, 1.0f);
+        glColor4f(Val, Val, Val, 0.6f);
             glNormal3d(0.0,-1.0,0.0);
-            glVertex3d( x-1, y-1, z+1);
-            glVertex3d( x-1, y-1, z-1);
-            glVertex3d( x+1, y-1, z-1);
-            glVertex3d( x+1, y-1, z+1);
+            glVertex3d( x-0.9, y-0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x-0.9, y-0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y-0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y-0.9, z+(0.9*EpaisseurCoupe));
         //Droite
-        glColor4f(Val, Val, Val, 1.0f);
+        glColor4f(Val, Val, Val, 0.6f);
             glNormal3d(1.0,0.0,0.0);
-            glVertex3d( x+1, y+1, z+1);
-            glVertex3d( x+1, y-1, z+1);
-            glVertex3d( x+1, y-1, z-1);
-            glVertex3d( x+1, y+1, z-1);
+            glVertex3d( x+0.9, y+0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y-0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y-0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y+0.9, z-(0.9*EpaisseurCoupe));
         //Derrière
-        glColor4f(Val, Val, Val, 1.0f);
+        glColor4f(Val, Val, Val, 0.6f);
             glNormal3d(0.0,0.0,-1.0);
-            glVertex3d( x+1, y+1, z-1);
-            glVertex3d( x+1, y-1, z-1);
-            glVertex3d( x-1, y-1, z-1);
-            glVertex3d( x-1, y+1, z-1);
+            glVertex3d( x+0.9, y+0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y-0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x-0.9, y-0.9, z-(0.9*EpaisseurCoupe));
+            glVertex3d( x-0.9, y+0.9, z-(0.9*EpaisseurCoupe));
         //Face
-        glColor4f(Val, Val, Val, 1.0f);
+        glColor4f(Val, Val, Val, 0.6f);
             glNormal3d(0.0,0.0,1.0);
-            glVertex3d(x-1, y+1, z+1);
-            glVertex3d(x-1, y-1, z+1);
-            glVertex3d( x+1, y-1, z+1);
-            glVertex3d( x+1, y+1, z+1);
+            glVertex3d(x-0.9, y+0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d(x-0.9, y-0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y-0.9, z+(0.9*EpaisseurCoupe));
+            glVertex3d( x+0.9, y+0.9, z+(0.9*EpaisseurCoupe));
     glEnd();
 }
 
@@ -310,7 +330,6 @@ void My3DScene::resizeGL(int width, int height)
 void My3DScene::paintGL()
 {
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-
     glMatrixMode(GL_MODELVIEW);
     glLoadIdentity();
 
@@ -322,16 +341,23 @@ void My3DScene::paintGL()
     glRotatef(180, -1.0, 0, 0); //Retourne l'image et regard vers la gauche
     glTranslatef((-colonne/2), (-ligne/2), -*NbFichiers / 2); //centrage
 
+    QVector<unsigned short> vector;
+
+    if (isDecoupe3D) vector = decoupeFull;
+    else if (!isDecoupe3D) vector = *allpixels;
+
     //Affichage de la première coupe entièrement (varie suivant le zoom dans les coupes)
-    glNewList(0, GL_COMPILE);
-    for (int y=0; y < ligne; y++){
-        for (int x=0; x < colonne; x++){
-            if ((int)(*allpixels)[zoom*256*256 + y*256 + x] > 50){ //Seuillage : ignore les pixels trop noir
-                drawCube((*allpixels)[zoom*256*256 + y*256 + x], x, y, zoom); //Appel de la fonction pour dessiner le voxel
+    if (zoom != 0){
+        glNewList(0, GL_COMPILE);
+        for (int y=0; y < ligne; y++){
+            for (int x=0; x < colonne; x++){
+                if ((int)vector[zoom*ligne*colonne + y*colonne + x] > 50 && (int)vector[zoom*ligne*colonne + y*colonne + x] < 255){ //Seuillage : ignore les pixels trop noir
+                    drawCube(vector[zoom*ligne*colonne + y*colonne + x], x, y, (1.8*EpaisseurCoupe)*(zoom-1)); //Appel de la fonction pour dessiner le voxel
+                }
             }
         }
+        glEndList();
     }
-    glEndList();
 
     //Affichage de toutes les coupes suivantes
     for (int i=zoom; i<*NbFichiers; i++){
@@ -410,12 +436,11 @@ void My3DScene::mouseMoveEvent(QMouseEvent* event)
 void My3DScene::wheelEvent(QWheelEvent* event) {
 
     if(Qt::ShiftModifier == QApplication::keyboardModifiers()){ // Vérifie que shift est appuyé -> pour rentrer dans les coupes de la reconstruction
-        inside = true; //Pour ne pas faire de zoom de l'image
         zoom += event->delta()/120; //ajoute +1 ou -1 à la valeur de zoom
         if (zoom==0) zoom=1; //Empeche de dézoomer plus que l'image originale
         if (zoom>*NbFichiers) zoom=*NbFichiers; //Empeche de zoom plus loin que la dernière coupe
     }
-    if (!inside) zoomZ+= (GLfloat)event->delta();
+    if (Qt::ShiftModifier != QApplication::keyboardModifiers()) zoomZ+= (GLfloat)event->delta();
     updateGL();
 
 }
@@ -423,7 +448,7 @@ void My3DScene::wheelEvent(QWheelEvent* event) {
 /*--------------------------------------------------------------------------
 * Fonction : mouse3DMove()
 *
-* Description : Controle de la sc?ne avec la souris 3D
+* Description : Contr?le de la sc?ne avec la souris 3D
 *
 * Arguments : Aucun
 *
@@ -451,7 +476,6 @@ void My3DScene::mouse3DMove()
         return;
 
     TranslationX = 10*h;
-
     //--------------------------TX------------------------------ -
     //Conditions de sensibilit? de la souris 3D
     if ((-pTx > 5) && (-pTx >= *precValueTX) && (-pTx < 20)) {

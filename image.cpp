@@ -1,4 +1,7 @@
 #include "image.h"
+#include "DICOM_3Dmouse.h"
+
+extern INT			facteurMatrice;
 
 image::image(QWidget* parent)
     : QLabel(parent)
@@ -15,8 +18,9 @@ void image::mousePressEvent(QMouseEvent* event)
         if (event->button() == Qt::LeftButton) {
             startX = event->pos().x();
             startY = event->pos().y();
+            cout << "startX = " << startX << "startY = " << startY << endl;
             drag = true;
-            rectangle = true;  //Utilisé dans scene3D.cpp
+            rectangle = true; //utilisé dans Scene3D.cpp pour représenter en 3D seulement la partie sélectionnée
         }
     }
     if(Qt::ShiftModifier == QApplication::keyboardModifiers()){ // Vérifie que shift est appuyé
@@ -27,9 +31,8 @@ void image::mousePressEvent(QMouseEvent* event)
             line = true;
         }
     }
-    if (event->button() == Qt::MidButton) {
+    if(event->button() == Qt::MidButton)
         isZoom = !isZoom;
-    }
 }
 
 void image::mouseMoveEvent(QMouseEvent* event)
@@ -42,7 +45,8 @@ void image::mouseMoveEvent(QMouseEvent* event)
 
         if (line){
             //Calcul de la mesure et affichage sous le curseur
-            float mesure = (sqrt((endX-startX)*(endX-startX) + (endY-startY)*(endY-startY))) ;
+            float mesure = (sqrt((endX-startX)*(endX-startX) + (endY-startY)*(endY-startY)))/facteurMatrice ; //Facteur matrice dépend si on a une matrice de 256*256 ou 512*512 etc...
+            // mise à jour des valeurs de mesure de la ligne en fonction du zoom
             switch (zoom)
             {
             case 1 :
@@ -74,26 +78,19 @@ void image::mouseMoveEvent(QMouseEvent* event)
     }
 }
 
-void image::wheelEvent(QWheelEvent* event)
-{
-    if(isZoom){
-        zoom += event->delta()/120;
-        if(zoom==0) zoom=1; //Empeche de dézoomer + que l'image originale
-        emit scrolled(event);
-    }
-}
-
 void image::mouseReleaseEvent(QMouseEvent* event)
 {
     if (event->button() == Qt::LeftButton && (drag || line))
     {
         endX = event->pos().x();
         endY = event->pos().y();
+        cout << "endX = " << endX << "endY = " << endY << endl;
         drag = false;
 
         if (line){
             //Calcul de la mesure et affichage sous le curseur
-            float mesure = (sqrt((endX-startX)*(endX-startX) + (endY-startY)*(endY-startY)));
+            float mesure = (sqrt((endX-startX)*(endX-startX) + (endY-startY)*(endY-startY)))/facteurMatrice ;
+            // mise à jour des valeurs de mesure de la ligne en fonction du zoom
             switch (zoom)
             {
             case 1 :
@@ -126,6 +123,17 @@ void image::mouseReleaseEvent(QMouseEvent* event)
     }
 }
 
+void image::wheelEvent(QWheelEvent *event)
+{
+    if (isZoom){ //Condition si on a cliqué pour effectuer un zoom
+        zoom += event->delta()/120; //ajoute +1 ou -1 à la valeur de zoom
+        if (zoom==0) zoom=1; //Empeche de dézoomer plus que l'image originale
+        //QString toolTipText = "x" + QString::number(zoom);
+        //QToolTip::showText(QCursor::pos(), toolTipText);
+        emit scrolled(event);
+    }
+}
+
 void image::paintEvent(QPaintEvent* event){
 
 
@@ -134,12 +142,12 @@ void image::paintEvent(QPaintEvent* event){
     if (drag){
         painter.setPen(Qt::green);
         painter.drawRect(startX, startY, endX-startX, endY-startY);
-
     }
     if (line){
         painter.setPen(Qt::red);
         painter.drawLine(startX, startY, endX, endY);
     }
 }
+
 
 

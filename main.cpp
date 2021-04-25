@@ -30,5 +30,6 @@ int main(int argc, char* argv[])
     //Initialisation de la souris 3D
     Init3DMouse();
     
+
     return a.exec();
 }
